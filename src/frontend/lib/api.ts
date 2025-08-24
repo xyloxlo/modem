@@ -2,7 +2,7 @@ import axios from 'axios'
 import { Modem, SystemStatus, ModemCommand, ApiResponse } from '@/types'
 
 // API Client Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

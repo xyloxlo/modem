@@ -75,20 +75,20 @@ sudo node modem-detector.js
 ## 🌐 **Dostęp do systemu:**
 
 ### Web Interface (po uruchomieniu)
-- **URL:** `http://localhost:3000`
-- **API:** `http://localhost:3000/api/modems`
-- **WebSocket:** `ws://localhost:3000/ws`
+- **Web Interface:** `http://localhost:3000` - React/Next.js dashboard
+- **Backend API:** `http://localhost:3002/api`
+- **WebSocket:** `ws://localhost:3002` - real-time updates
 
 ### API Endpoints
 ```bash
 # Lista wszystkich modemów
-curl http://localhost:3000/api/modems
+curl http://localhost:3002/api/modems
 
 # Status systemu
-curl http://localhost:3000/api/system/status
+curl http://localhost:3002/api/system/status
 
 # Skanowanie modemów
-curl -X POST http://localhost:3000/api/modems/scan
+curl -X POST http://localhost:3002/api/modems/scan
 ```
 
 ---
@@ -100,7 +100,7 @@ Edytuj plik: `/etc/systemd/system/ec25-eux.service`
 
 ```ini
 # Przykładowe zmienne środowiskowe:
-Environment=API_PORT=3000
+Environment=API_PORT=3002
 Environment=DB_HOST=localhost
 Environment=DB_NAME=ec25_modems
 Environment=DB_USER=modem_user
@@ -247,7 +247,7 @@ sudo systemctl status ec25-eux
 ```
 
 ```bash
-curl http://localhost:3000/api/system/status
+curl http://localhost:3002/api/system/status
 {
   "success": true,
   "status": "operational",

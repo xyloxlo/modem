@@ -45,8 +45,8 @@ npm install
 Create `.env.local` file:
 ```bash
 # API Configuration
-NEXT_PUBLIC_API_URL=http://localhost:3000/api
-NEXT_PUBLIC_WS_URL=ws://localhost:3000
+NEXT_PUBLIC_API_URL=http://localhost:3002/api
+NEXT_PUBLIC_WS_URL=ws://localhost:3002
 
 # Development
 NODE_ENV=development
@@ -68,14 +68,14 @@ npm start
 
 ### API Integration
 The frontend connects to the EC25-EUX backend API:
-- **Backend API**: http://localhost:3000/api
-- **WebSocket**: ws://localhost:3000/ws
+- **Backend API**: http://localhost:3002/api
+- **WebSocket**: ws://localhost:3002/ws
 - **Frontend**: http://localhost:3001
 
 ### Port Configuration
-- Frontend runs on port **3001**
-- Backend API runs on port **3000**
-- WebSocket uses the same port as backend (**3000**)
+- Frontend runs on port **3000**
+- Backend API runs on port **3002**
+- WebSocket uses the same port as backend (**3002**)
 
 ## 📱 Interface Components
 
@@ -297,8 +297,8 @@ npm run build
 ```
 
 ### Integration Testing
-1. Start backend API server (port 3000)
-2. Start frontend dev server (port 3001)
+1. Start backend API server (port 3002)
+2. Start frontend dev server (port 3000)
 3. Connect EC25-EUX modems
 4. Test real-time updates and commands
 

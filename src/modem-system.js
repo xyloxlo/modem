@@ -45,7 +45,7 @@ class EC25ModemSystem {
             
             // API server configuration
             api: {
-                port: process.env.API_PORT || 3001,
+                port: process.env.API_PORT || 3002,
                 host: process.env.API_HOST || '0.0.0.0',
                 jwtSecret: process.env.JWT_SECRET || 'ec25-eux-secret-key-change-in-production'
             },
@@ -66,7 +66,7 @@ class EC25ModemSystem {
             // Proxy port allocation (3128-4127 = 1000 ports, max 100 modems)
             proxy: {
                 portRange: { start: 3128, end: 4127 },
-                reservedPorts: [22, 80, 443, 8080, 3000, 3001, 5432]
+                reservedPorts: [22, 80, 443, 8080, 3000, 3001, 3002, 5432]
             },
             
             // Hot-plug detection settings

@@ -68,10 +68,11 @@ npm run help                # Display usage info
 ```
 
 ### **Access:**
-- **API**: http://localhost:3000
-- **WebSocket**: ws://localhost:3000/ws
-- **Modems API**: http://localhost:3000/api/modems
-- **System Status**: http://localhost:3000/api/system/status
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:3002/api
+- **WebSocket**: ws://localhost:3002
+- **Modems API**: http://localhost:3002/api/modems
+- **System Status**: http://localhost:3002/api/system/status
 
 ## 📡 API Endpoints
 
@@ -117,7 +118,7 @@ src/
 ├─────────────────────────────────────────────────────────────┤
 │  Express.js API + WebSocket Real-time Updates              │
 │  ├── REST Endpoints (/api/modems, /api/system)             │
-│  ├── WebSocket Server (ws://localhost:3000/ws)             │
+│  ├── WebSocket Server (ws://localhost:3002)               │
 │  └── Security Layer (JWT + CORS + Helmet)                  │
 ├─────────────────────────────────────────────────────────────┤
 │  PostgreSQL Database + Event-Driven Architecture           │
@@ -133,7 +134,7 @@ src/
 ├─────────────────────────────────────────────────────────────┤
 │  Dynamic Proxy Port Allocation                            │
 │  ├── Port Range: 3128-4127 (1000 ports, 100 modems max)  │
-│  ├── Reserved Ports: 22, 80, 443, 3000, 5432             │
+│  ├── Reserved Ports: 22, 80, 443, 3000, 3001, 3002, 5432 │
 │  └── Atomic Allocation with Database Integration          │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -154,7 +155,7 @@ npm run detect
 
 ### **System Health:**
 ```bash
-curl http://localhost:3000/api/system/status
+curl http://localhost:3002/api/system/status
 ```
 
 ## 📊 Verified Port Mapping
@@ -196,12 +197,12 @@ DB_USER=modem_user
 DB_PASSWORD=secure_password_123
 
 # API Server
-API_PORT=3000
+API_PORT=3002
 API_HOST=0.0.0.0
 JWT_SECRET=change-in-production
 
 # CORS
-CORS_ORIGIN=http://localhost:3001
+CORS_ORIGIN=http://localhost:3000
 ```
 
 ### **Production Setup:**
@@ -244,13 +245,13 @@ pm2 start modem-system.js --name "ec25-system"
 ### **Debug Commands:**
 ```bash
 # Check system status
-curl http://localhost:3000/api/system/status
+curl http://localhost:3002/api/system/status
 
 # Manual detection scan
-curl -X POST http://localhost:3000/api/modems/scan
+curl -X POST http://localhost:3002/api/modems/scan
 
 # View active modems
-curl http://localhost:3000/api/modems
+curl http://localhost:3002/api/modems
 
 # Test hardware detection
 npm run test:detector

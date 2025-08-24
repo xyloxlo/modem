@@ -17,11 +17,11 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:3000/api/:path*', // Backend API
+        destination: 'http://localhost:3002/api/:path*', // Backend API
       },
       {
         source: '/ws',
-        destination: 'http://localhost:3000/ws', // WebSocket
+        destination: 'http://localhost:3002/ws', // WebSocket
       },
     ];
   },
