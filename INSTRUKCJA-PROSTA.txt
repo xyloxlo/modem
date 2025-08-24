@@ -1,0 +1,36 @@
+🚀 EC25-EUX PROSTA INSTRUKCJA
+=============================
+
+JEDEN SKRYPT - ROBI WSZYSTKO AUTOMATYCZNIE!
+
+1. OTWÓRZ UBUNTU VM W VIRTUALBOX
+   
+2. W UBUNTU TERMINAL WPISZ:
+   cd /media/sf_Wspdzielony_VirtualBox/EC25-EUX\ SOFT
+   chmod +x AUTO-START.sh
+   ./AUTO-START.sh
+
+3. OBSERWUJ CO SIĘ DZIEJE
+
+4. NA KOŃCU BĘDZIE PLIK Z WYNIKAMI - PRZEŚLIJ GO
+
+TO WSZYSTKO!
+============
+
+Skrypt automatycznie:
+✅ Sprawdzi Ubuntu
+✅ Zainstaluje narzędzia  
+✅ Znajdzie modemy
+✅ Przetestuje komunikację
+✅ Uruchomi Node.js
+✅ Zapisze wyniki
+✅ Powie co dalej
+
+ŻADNYCH WYBORÓW - WSZYSTKO AUTOMATYCZNE!
+
+Jeśli coś nie działa:
+- Pokaż mi screenshota błędu
+- Prześlij plik z wynikami
+- Naprawimy to razem!
+
+🎯 CEL: JEDEN SKRYPT = GOTOWY SYSTEM

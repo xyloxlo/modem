@@ -1,0 +1,45 @@
+{
+  "name": "ec25-eux-modem-manager",
+  "version": "1.0.0",
+  "description": "Multi-modem management system for EC25-EUX LTE modems with 3proxy integration",
+  "main": "modem-system.js",
+  "scripts": {
+    "start": "node modem-system.js auto-start",
+    "auto-start": "node modem-system.js auto-start",
+    "quick-start": "node modem-system.js quick-start",
+    "detect": "node modem-system.js detect",
+    "test:detector": "node test-detector.js",
+    "system": "node modem-system.js",
+    "dev": "nodemon modem-system.js quick-start",
+    "help": "node modem-system.js help"
+  },
+  "keywords": [
+    "ec25-eux",
+    "lte",
+    "modem",
+    "proxy",
+    "3proxy",
+    "serial",
+    "qmi",
+    "at-commands"
+  ],
+  "author": "EC25-EUX Project",
+  "license": "MIT",
+  "dependencies": {
+    "serialport": "^11.0.0",
+    "@serialport/parser-readline": "^11.0.0",
+    "pg": "^8.11.0",
+    "express": "^4.18.0",
+    "ws": "^8.13.0",
+    "jsonwebtoken": "^9.0.0",
+    "bcrypt": "^5.1.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
