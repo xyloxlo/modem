@@ -16,7 +16,7 @@
 
 const express = require('express');
 const { Pool } = require('pg');
-const WebSocket = require('ws');
+const { Server } = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
 const jwt = require('jsonwebtoken');
@@ -45,7 +45,7 @@ class EC25ModemSystem {
             
             // API server configuration
             api: {
-                port: process.env.API_PORT || 3000,
+                port: process.env.API_PORT || 3001,
                 host: process.env.API_HOST || '0.0.0.0',
                 jwtSecret: process.env.JWT_SECRET || 'ec25-eux-secret-key-change-in-production'
             },
@@ -66,7 +66,7 @@ class EC25ModemSystem {
             // Proxy port allocation (3128-4127 = 1000 ports, max 100 modems)
             proxy: {
                 portRange: { start: 3128, end: 4127 },
-                reservedPorts: [22, 80, 443, 8080, 3000, 5432]
+                reservedPorts: [22, 80, 443, 8080, 3000, 3001, 5432]
             },
             
             // Hot-plug detection settings
@@ -98,7 +98,7 @@ class EC25ModemSystem {
         // System components
         this.db = null;
         this.api = null;
-        this.wss = null;
+        this.io = null;
         this.detectionWorker = null;
         
         // State management
@@ -138,7 +138,7 @@ class EC25ModemSystem {
             
             console.log('✅ EC25-EUX Multi-Modem System ready!');
             console.log(`🌐 API server: http://${this.options.api.host}:${this.options.api.port}`);
-            console.log(`📡 WebSocket: ws://${this.options.api.host}:${this.options.api.port}/ws`);
+            console.log(`📡 Socket.IO: http://${this.options.api.host}:${this.options.api.port}`);
             
             return true;
             
@@ -511,7 +511,7 @@ class EC25ModemSystem {
         // Security middleware (Phase 7)
         this.api.use(helmet());
         this.api.use(cors({
-            origin: process.env.CORS_ORIGIN || 'http://localhost:3001',
+            origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
             credentials: true
         }));
         this.api.use(express.json());
@@ -519,13 +519,18 @@ class EC25ModemSystem {
         // API routes
         this.setupAPIRoutes();
         
-        // WebSocket server for real-time updates
+        // Socket.IO server for real-time updates
         const server = this.api.listen(this.options.api.port, this.options.api.host);
-        this.wss = new WebSocket.Server({ server, path: '/ws' });
+        this.io = new Server(server, {
+            cors: {
+                origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+                credentials: true
+            }
+        });
         
         this.setupWebSocketHandlers();
         
-        console.log('✅ API server initialized with WebSocket support');
+        console.log('✅ API server initialized with Socket.IO support');
     }
     
     /**
@@ -619,38 +624,32 @@ class EC25ModemSystem {
      * Setup WebSocket handlers for real-time updates
      */
     setupWebSocketHandlers() {
-        this.wss.on('connection', (ws) => {
-            console.log('👤 WebSocket client connected');
-            this.connectedClients.add(ws);
+        this.io.on('connection', (socket) => {
+            console.log('👤 Socket.IO client connected:', socket.id);
+            this.connectedClients.add(socket);
             
             // Send current system state
-            ws.send(JSON.stringify({
-                type: 'system_status',
-                data: {
-                    activeModems: Array.from(this.activeModems.values()),
-                    statistics: this.systemStats
-                }
-            }));
+            socket.emit('system_status', {
+                activeModems: Array.from(this.activeModems.values()),
+                statistics: this.systemStats
+            });
             
-            ws.on('close', () => {
-                console.log('👤 WebSocket client disconnected');
-                this.connectedClients.delete(ws);
+            socket.on('disconnect', () => {
+                console.log('👤 Socket.IO client disconnected:', socket.id);
+                this.connectedClients.delete(socket);
             });
         });
         
-        console.log('🔄 WebSocket handlers configured');
+        console.log('🔄 Socket.IO handlers configured');
     }
     
     /**
-     * Broadcast message to all WebSocket clients
+     * Broadcast message to all Socket.IO clients
      */
     broadcastToClients(message) {
-        const data = JSON.stringify(message);
-        this.connectedClients.forEach(client => {
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(data);
-            }
-        });
+        if (this.io) {
+            this.io.emit(message.type, message);
+        }
     }
     
     /**
@@ -934,7 +933,7 @@ class EC25ModemSystem {
         await this.initializeAPI();
         console.log('   ✅ API server running');
         
-        console.log('   ✅ WebSocket server ready\n');
+        console.log('   ✅ Socket.IO server ready\n');
     }
     
     /**
@@ -1080,8 +1079,8 @@ class EC25ModemSystem {
             clearInterval(this.detectionWorker);
         }
         
-        if (this.wss) {
-            this.wss.close();
+        if (this.io) {
+            this.io.close();
         }
         
         if (this.db) {
@@ -1151,7 +1150,7 @@ Commands:
 
 AUTO-START Sequence (per documentation):
   Phase 1: Boot delay (45s) + USB settlement
-  Phase 2: System initialization (DB, API, WebSocket)
+  Phase 2: System initialization (DB, API, Socket.IO)
   Phase 3: Modem detection & port mapping  
   Phase 4: Staggered startup (groups of 5, 5s intervals)
   Phase 5: Health check grace period (2.5 min)
