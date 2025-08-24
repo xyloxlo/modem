@@ -150,35 +150,191 @@ class EC25ModemSystem {
     
     /**
      * Phase 2: Database initialization with event-driven triggers
+     * AUTO-SETUP: Automatically installs and configures PostgreSQL if needed
      */
     async initializeDatabase() {
-        console.log('🗄️  Initializing PostgreSQL with event triggers...');
-        
-        this.db = new Pool({
-            ...this.options.database,
-            max: this.options.scaling.dbConnectionPoolSize,
-            idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 2000
-        });
-        
-        // Test connection
-        const client = await this.db.connect();
+        console.log('🗄️  Initializing PostgreSQL with auto-setup...');
         
         try {
-            // Create tables if not exist (idempotent)
-            await this.createDatabaseSchema(client);
+            // Step 1: Ensure PostgreSQL is installed and running
+            await this.ensurePostgreSQLAvailable();
             
-            // Setup event-driven triggers (PostgreSQL LISTEN/NOTIFY)
-            await this.setupEventTriggers(client);
+            // Step 2: Create database connection pool
+            this.db = new Pool({
+                ...this.options.database,
+                max: this.options.scaling.dbConnectionPoolSize,
+                idleTimeoutMillis: 30000,
+                connectionTimeoutMillis: 5000
+            });
             
-            // Start listening for database events
-            await this.startDatabaseEventListener();
+            // Step 3: Test connection and setup database
+            const client = await this.db.connect();
             
-            console.log('✅ Database initialized with event-driven architecture');
+            try {
+                // Create database and user if needed
+                await this.setupDatabaseAndUser(client);
+                
+                // Create tables if not exist (idempotent)
+                await this.createDatabaseSchema(client);
+                
+                // Setup event-driven triggers (PostgreSQL LISTEN/NOTIFY)
+                await this.setupEventTriggers(client);
+                
+                // Start listening for database events
+                await this.startDatabaseEventListener();
+                
+                console.log('✅ Database initialized with event-driven architecture');
+                
+            } finally {
+                client.release();
+            }
             
-        } finally {
-            client.release();
+        } catch (error) {
+            console.log('⚠️  PostgreSQL not available, running in standalone mode...');
+            console.log(`   Database error: ${error.message}`);
+            
+            // Initialize in-memory fallback
+            await this.initializeStandaloneMode();
         }
+    }
+    
+    /**
+     * AUTO-SETUP: Ensure PostgreSQL is installed and running
+     */
+    async ensurePostgreSQLAvailable() {
+        console.log('🔍 Checking PostgreSQL availability...');
+        
+        try {
+            // Check if PostgreSQL is installed
+            await execAsync('which pg_isready');
+            console.log('   ✅ PostgreSQL tools found');
+            
+            // Check if PostgreSQL service is running
+            const { stdout } = await execAsync('pg_isready -h localhost -p 5432');
+            
+            if (stdout.includes('accepting connections')) {
+                console.log('   ✅ PostgreSQL service is running');
+                return true;
+            }
+            
+        } catch (error) {
+            console.log('   ❌ PostgreSQL not available, attempting auto-installation...');
+            await this.autoInstallPostgreSQL();
+        }
+    }
+    
+    /**
+     * AUTO-SETUP: Install and configure PostgreSQL automatically
+     */
+    async autoInstallPostgreSQL() {
+        console.log('📦 Auto-installing PostgreSQL...');
+        
+        try {
+            // Update package list
+            console.log('   📥 Updating package list...');
+            await execAsync('apt update', { timeout: 30000 });
+            
+            // Install PostgreSQL
+            console.log('   📦 Installing PostgreSQL...');
+            await execAsync('apt install -y postgresql postgresql-contrib', { timeout: 120000 });
+            
+            // Start and enable PostgreSQL service
+            console.log('   🚀 Starting PostgreSQL service...');
+            await execAsync('systemctl start postgresql');
+            await execAsync('systemctl enable postgresql');
+            
+            // Wait for service to be ready
+            console.log('   ⏱️  Waiting for PostgreSQL to be ready...');
+            await this.sleep(5000);
+            
+            // Verify installation
+            await execAsync('pg_isready -h localhost -p 5432');
+            console.log('   ✅ PostgreSQL auto-installation successful');
+            
+        } catch (error) {
+            throw new Error(`PostgreSQL auto-installation failed: ${error.message}`);
+        }
+    }
+    
+    /**
+     * AUTO-SETUP: Create database and user if they don't exist
+     */
+    async setupDatabaseAndUser(client) {
+        console.log('🔧 Setting up database and user...');
+        
+        try {
+            // Try connecting with postgres user first
+            const adminPool = new Pool({
+                host: this.options.database.host,
+                port: this.options.database.port,
+                database: 'postgres', // Connect to default postgres db
+                user: 'postgres',
+                password: '' // Try without password first
+            });
+            
+            const adminClient = await adminPool.connect();
+            
+            try {
+                // Create database if not exists
+                console.log(`   🗄️  Creating database '${this.options.database.database}'...`);
+                await adminClient.query(`
+                    SELECT 1 FROM pg_database WHERE datname = '${this.options.database.database}'
+                `).then(async (result) => {
+                    if (result.rows.length === 0) {
+                        await adminClient.query(`CREATE DATABASE ${this.options.database.database}`);
+                        console.log('   ✅ Database created');
+                    } else {
+                        console.log('   ✅ Database already exists');
+                    }
+                });
+                
+                // Create user if not exists
+                console.log(`   👤 Creating user '${this.options.database.user}'...`);
+                await adminClient.query(`
+                    SELECT 1 FROM pg_roles WHERE rolname = '${this.options.database.user}'
+                `).then(async (result) => {
+                    if (result.rows.length === 0) {
+                        await adminClient.query(`
+                            CREATE USER ${this.options.database.user} 
+                            WITH PASSWORD '${this.options.database.password}'
+                        `);
+                        console.log('   ✅ User created');
+                    } else {
+                        console.log('   ✅ User already exists');
+                    }
+                });
+                
+                // Grant privileges
+                await adminClient.query(`
+                    GRANT ALL PRIVILEGES ON DATABASE ${this.options.database.database} 
+                    TO ${this.options.database.user}
+                `);
+                console.log('   ✅ Privileges granted');
+                
+            } finally {
+                adminClient.release();
+                await adminPool.end();
+            }
+            
+        } catch (error) {
+            console.log(`   ⚠️  Database setup warning: ${error.message}`);
+            console.log('   📝 You may need to manually configure PostgreSQL');
+        }
+    }
+    
+    /**
+     * Initialize standalone mode (no database)
+     */
+    async initializeStandaloneMode() {
+        console.log('🔄 Initializing standalone mode (in-memory storage)...');
+        
+        // Use Map for in-memory storage
+        this.standaloneMode = true;
+        this.inMemoryModems = new Map();
+        this.inMemoryLogs = [];
+        
+        console.log('   ✅ Standalone mode initialized');
+        console.log('   📝 Note: Data will not persist between restarts');
     }
     
     /**
@@ -379,17 +535,28 @@ class EC25ModemSystem {
         // GET /api/modems - Retrieve all modems with status
         this.api.get('/api/modems', async (req, res) => {
             try {
-                const result = await this.db.query(`
-                    SELECT serial, usb_id, at_port, qmi_device, proxy_port, 
-                           status, wan_ip, signal_strength, operator, last_seen
-                    FROM modems 
-                    ORDER BY created_at ASC
-                `);
+                let modems = [];
+                
+                if (this.standaloneMode) {
+                    // Standalone mode: get from memory
+                    modems = Array.from(this.inMemoryModems.values())
+                        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                } else {
+                    // Database mode: query PostgreSQL
+                    const result = await this.db.query(`
+                        SELECT serial, usb_id, at_port, qmi_device, proxy_port, 
+                               status, wan_ip, signal_strength, operator, last_seen
+                        FROM modems 
+                        ORDER BY created_at ASC
+                    `);
+                    modems = result.rows;
+                }
                 
                 res.json({
                     success: true,
-                    modems: result.rows,
-                    count: result.rows.length,
+                    modems: modems,
+                    count: modems.length,
+                    mode: this.standaloneMode ? 'standalone' : 'database',
                     timestamp: new Date().toISOString()
                 });
                 
@@ -539,35 +706,66 @@ class EC25ModemSystem {
     }
     
     /**
-     * Process newly detected modem (database insertion/update)
+     * Process newly detected modem (database insertion/update or in-memory storage)
      */
     async processDetectedModem(modem) {
         try {
             // Generate serial number for database key
             const serial = `EC25_${modem.modemNumber}_${modem.usb.busNumber}_${modem.usb.deviceNumber}`;
             
-            // Insert or update modem in database (triggers events)
-            const result = await this.db.query(`
-                INSERT INTO modems (serial, usb_id, at_port, qmi_device, status)
-                VALUES ($1, $2, $3, $4, $5)
-                ON CONFLICT (serial) DO UPDATE SET
-                    at_port = EXCLUDED.at_port,
-                    qmi_device = EXCLUDED.qmi_device,
-                    status = EXCLUDED.status,
-                    last_seen = NOW(),
-                    updated_at = NOW()
-                RETURNING *
-            `, [
-                serial,
-                modem.usb.usbId,
-                modem.atPort,
-                modem.qmiDevice,
-                modem.status.fullyMapped ? 'ready' : 'partial'
-            ]);
-            
-            // Allocate proxy port if needed
-            if (modem.status.fullyMapped && !result.rows[0].proxy_port) {
-                await this.allocateProxyPort(serial);
+            if (this.standaloneMode) {
+                // Standalone mode: store in memory
+                const modemData = {
+                    serial,
+                    usb_id: modem.usb.usbId,
+                    at_port: modem.atPort,
+                    qmi_device: modem.qmiDevice,
+                    status: modem.status.fullyMapped ? 'ready' : 'partial',
+                    last_seen: new Date(),
+                    created_at: this.inMemoryModems.has(serial) ? this.inMemoryModems.get(serial).created_at : new Date(),
+                    updated_at: new Date()
+                };
+                
+                this.inMemoryModems.set(serial, modemData);
+                
+                // Allocate proxy port if needed (in-memory)
+                if (modem.status.fullyMapped && !modemData.proxy_port) {
+                    await this.allocateProxyPortStandalone(serial);
+                }
+                
+                // Trigger manual event for WebSocket clients
+                this.handleModemEvent({
+                    operation: this.inMemoryModems.has(serial) ? 'UPDATE' : 'INSERT',
+                    serial: serial,
+                    status: modemData.status,
+                    proxy_port: modemData.proxy_port,
+                    at_port: modemData.at_port
+                });
+                
+            } else {
+                // Database mode: use PostgreSQL
+                const result = await this.db.query(`
+                    INSERT INTO modems (serial, usb_id, at_port, qmi_device, status)
+                    VALUES ($1, $2, $3, $4, $5)
+                    ON CONFLICT (serial) DO UPDATE SET
+                        at_port = EXCLUDED.at_port,
+                        qmi_device = EXCLUDED.qmi_device,
+                        status = EXCLUDED.status,
+                        last_seen = NOW(),
+                        updated_at = NOW()
+                    RETURNING *
+                `, [
+                    serial,
+                    modem.usb.usbId,
+                    modem.atPort,
+                    modem.qmiDevice,
+                    modem.status.fullyMapped ? 'ready' : 'partial'
+                ]);
+                
+                // Allocate proxy port if needed
+                if (modem.status.fullyMapped && !result.rows[0].proxy_port) {
+                    await this.allocateProxyPort(serial);
+                }
             }
             
         } catch (error) {
@@ -576,7 +774,7 @@ class EC25ModemSystem {
     }
     
     /**
-     * Phase 4: Dynamic proxy port allocation
+     * Phase 4: Dynamic proxy port allocation (Database mode)
      */
     async allocateProxyPort(modemSerial) {
         try {
@@ -608,6 +806,43 @@ class EC25ModemSystem {
             
         } catch (error) {
             console.error('Proxy port allocation error:', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Phase 4: Dynamic proxy port allocation (Standalone mode)
+     */
+    async allocateProxyPortStandalone(modemSerial) {
+        try {
+            // Find available port in range (in-memory)
+            const usedPorts = Array.from(this.inMemoryModems.values())
+                .map(modem => modem.proxy_port)
+                .filter(port => port !== undefined)
+                .concat(this.options.proxy.reservedPorts);
+            
+            const usedPortSet = new Set(usedPorts);
+            
+            // Find first available port
+            for (let port = this.options.proxy.portRange.start; port <= this.options.proxy.portRange.end; port++) {
+                if (!usedPortSet.has(port)) {
+                    // Update in-memory storage
+                    const modemData = this.inMemoryModems.get(modemSerial);
+                    if (modemData) {
+                        modemData.proxy_port = port;
+                        this.inMemoryModems.set(modemSerial, modemData);
+                    }
+                    
+                    console.log(`🔗 Allocated proxy port ${port} to modem ${modemSerial} (standalone)`);
+                    this.systemStats.allocatedPorts++;
+                    return port;
+                }
+            }
+            
+            throw new Error('No available proxy ports');
+            
+        } catch (error) {
+            console.error('Proxy port allocation error (standalone):', error);
             throw error;
         }
     }

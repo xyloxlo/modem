@@ -1,0 +1,62 @@
+[Unit]
+Description=EC25-EUX Multi-Modem Management System
+Documentation=https://github.com/ec25-eux/multi-modem-system
+After=network.target network-online.target postgresql.service udev-settled.service
+Wants=network-online.target postgresql.service
+Requires=network.target
+
+# Wait for USB devices to settle
+After=multi-user.target
+Wants=multi-user.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/home/server1/EC25-EUX/src
+ExecStart=/usr/bin/node modem-system.js auto-start
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStartSec=300
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=10
+
+# Environment variables
+Environment=NODE_ENV=production
+Environment=LOG_LEVEL=info
+Environment=API_PORT=3000
+Environment=DB_HOST=localhost
+Environment=DB_PORT=5432
+Environment=DB_NAME=ec25_modems
+Environment=DB_USER=modem_user
+Environment=DB_PASSWORD=secure_password_123
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/server1/EC25-EUX
+ReadOnlyPaths=/dev/ttyUSB* /dev/cdc-wdm*
+DeviceAllow=/dev/ttyUSB* rw
+DeviceAllow=/dev/cdc-wdm* rw
+DevicePolicy=closed
+
+# Resource limits (per modem system requirements)
+LimitNOFILE=65536
+LimitNPROC=4096
+MemoryLimit=2G
+CPUQuota=200%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ec25-eux
+
+# Process management
+PIDFile=/run/ec25-eux.pid
+
+[Install]
+WantedBy=multi-user.target
+Alias=ec25.service
