@@ -1,11 +1,13 @@
 import axios from 'axios'
 import { Modem, SystemStatus, ModemCommand, ApiResponse } from '@/types'
 
-// API Client Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api'
+// API Client Configuration - Use Next.js proxy
+const API_BASE_URL = '/api'
 
 // Debug logging
 console.log('🔗 API_BASE_URL:', API_BASE_URL)
+console.log('🔗 NODE_ENV:', process.env.NODE_ENV)
+console.log('🔗 Using Next.js proxy to backend')
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

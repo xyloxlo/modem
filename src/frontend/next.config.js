@@ -20,8 +20,8 @@ const nextConfig = {
         destination: 'http://localhost:3002/api/:path*', // Backend API
       },
       {
-        source: '/ws',
-        destination: 'http://localhost:3002/ws', // WebSocket
+        source: '/socket.io/:path*',
+        destination: 'http://localhost:3002/socket.io/:path*', // Socket.IO
       },
     ];
   },

@@ -205,7 +205,6 @@ start_frontend() {
     cd src/frontend/
     
     # Set environment variables for frontend
-    export NEXT_PUBLIC_API_URL=http://localhost:3002/api
     export NEXT_PUBLIC_WS_URL=http://localhost:3002
     export PORT=3000
     
