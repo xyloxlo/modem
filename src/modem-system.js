@@ -417,9 +417,9 @@ class EC25ModemSystem {
         this.api.post('/api/modems/:serial/command', async (req, res) => {
             try {
                 const { serial } = req.params;
-                const { command, interface } = req.body; // interface: 'AT' or 'QMI'
+                const { command, commandInterface } = req.body; // commandInterface: 'AT' or 'QMI'
                 
-                const result = await this.executeModemCommand(serial, command, interface);
+                const result = await this.executeModemCommand(serial, command, commandInterface);
                 res.json({
                     success: true,
                     result: result,
@@ -615,13 +615,13 @@ class EC25ModemSystem {
     /**
      * Execute AT or QMI command on specific modem
      */
-    async executeModemCommand(serial, command, interface = 'AT') {
+    async executeModemCommand(serial, command, commandInterface = 'AT') {
         // This will be implemented with SerialPort integration
         // For now, return placeholder
         return {
             serial,
             command,
-            interface,
+            interface: commandInterface,
             response: 'Command execution not yet implemented',
             timestamp: new Date().toISOString()
         };
@@ -667,7 +667,7 @@ class EC25ModemSystem {
         console.log('⏱️  Phase 1: Boot Delay & USB Settlement');
         console.log('   Purpose: Wait for USB enumeration stability');
         
-        const delaySeconds = this.config.bootSequence?.delaySeconds || 45;
+        const delaySeconds = this.options.bootSequence?.delaySeconds || 45;
         console.log(`   Waiting ${delaySeconds}s for system stabilization...`);
         
         await this.sleep(delaySeconds * 1000);
@@ -699,8 +699,6 @@ class EC25ModemSystem {
         await this.initializeAPI();
         console.log('   ✅ API server running');
         
-        console.log('   WebSocket server...');
-        await this.initializeWebSocket();
         console.log('   ✅ WebSocket server ready\n');
     }
     
@@ -734,9 +732,9 @@ class EC25ModemSystem {
         console.log('⚡ Phase 4: Staggered Modem Startup');
         console.log('   Strategy: Groups of 5 modems, 5-second intervals');
         
-        const batchSize = this.config.bootSequence?.batchSize || 5;
-        const batchDelay = this.config.bootSequence?.batchDelay || 5000;
-        const instanceDelay = this.config.bootSequence?.instanceDelay || 2500;
+        const batchSize = this.options.bootSequence?.batchSize || 5;
+        const batchDelay = this.options.bootSequence?.batchDelay || 5000;
+        const instanceDelay = this.options.bootSequence?.instanceDelay || 2500;
         
         for (let i = 0; i < modems.length; i += batchSize) {
             const batch = modems.slice(i, i + batchSize);
@@ -773,7 +771,7 @@ class EC25ModemSystem {
         console.log('🏥 Phase 5: Health Check Grace Period');
         console.log('   Purpose: Allow network connections to stabilize');
         
-        const gracePeriod = this.config.bootSequence?.gracePeriod || 150000; // 2.5 min
+        const gracePeriod = this.options.bootSequence?.gracePeriod || 150000; // 2.5 min
         console.log(`   Grace period: ${gracePeriod/1000}s for network stabilization...`);
         
         const steps = 5;
@@ -798,11 +796,11 @@ class EC25ModemSystem {
      */
     async startModemServices(modem) {
         try {
-            // Register modem in database
-            await this.registerModem(modem);
+            // Register modem in database (already done in processDetectedModem)
+            await this.processDetectedModem(modem);
             
-            // Allocate proxy port
-            await this.allocateProxyPort(modem.serial);
+            // Allocate proxy port (handled in processDetectedModem if needed)
+            // await this.allocateProxyPort(modem.serial);
             
             // Start 3proxy instance (placeholder for now)
             // await this.start3ProxyInstance(modem);
