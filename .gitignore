@@ -1,0 +1,102 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.npm
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Frontend builds (Next.js)
+src/frontend/.next/
+src/frontend/out/
+src/frontend/dist/
+src/frontend/build/
+
+# Backend builds
+src/dist/
+src/build/
+
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# Dependency directories
+**/node_modules/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# TypeScript
+*.tsbuildinfo
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+
+# Database files (for development)
+*.db
+*.sqlite
+*.sqlite3
+
+# Compiled drivers (if any)
+drivers/**/*.o
+drivers/**/*.ko
+drivers/**/*.mod.c
+drivers/**/*.mod
+
+# System files
+*.lock
+package-lock.json.bak
+
+# Production configs (keep templates)
+*.env.production
+config/production.json
+
+# Backup files
+*.bak
+*.backup
+
+# Test coverage
+coverage/
+
+# Build artifacts
+dist/
+build/
+
+# Vercel (if used for deployment)
+.vercel

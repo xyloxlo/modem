@@ -1,0 +1,51 @@
+[Unit]
+Description=EC25-EUX Frontend Web Interface
+Documentation=https://github.com/ec25-eux/multi-modem-system/frontend
+After=network.target network-online.target ec25-eux.service
+Wants=network-online.target ec25-eux.service
+Requires=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/home/server1/EC25-EUX/src/frontend
+ExecStartPre=/usr/bin/npm run build
+ExecStart=/usr/bin/npm start
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStartSec=60
+TimeoutStopSec=20
+Restart=on-failure
+RestartSec=5
+
+# Environment variables
+Environment=NODE_ENV=production
+Environment=NEXT_PUBLIC_API_URL=http://localhost:3000/api
+Environment=NEXT_PUBLIC_WS_URL=ws://localhost:3000
+Environment=PORT=3001
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/server1/EC25-EUX/src/frontend
+
+# Resource limits
+LimitNOFILE=4096
+LimitNPROC=1024
+MemoryLimit=512M
+CPUQuota=100%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ec25-eux-frontend
+
+# Process management
+PIDFile=/run/ec25-eux-frontend.pid
+
+[Install]
+WantedBy=multi-user.target
+Alias=ec25-frontend.service
