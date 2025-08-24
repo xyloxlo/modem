@@ -121,6 +121,12 @@ cleanup_ports() {
         lsof -Pi :3000 -sTCP:LISTEN -t | xargs kill -9 2>/dev/null || true
     fi
     
+    # Kill processes on port 3001 (cleanup)
+    if lsof -Pi :3001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+        print_warning "Zabijam procesy na porcie 3001..."
+        lsof -Pi :3001 -sTCP:LISTEN -t | xargs kill -9 2>/dev/null || true
+    fi
+    
     # Kill processes on port 3002 (backend)
     if lsof -Pi :3002 -sTCP:LISTEN -t >/dev/null 2>&1; then
         print_warning "Zabijam procesy na porcie 3002..."
@@ -198,6 +204,11 @@ start_frontend() {
     
     cd src/frontend/
     
+    # Set environment variables for frontend
+    export NEXT_PUBLIC_API_URL=http://localhost:3002/api
+    export NEXT_PUBLIC_WS_URL=http://localhost:3002
+    export PORT=3000
+    
     if [[ "$1" == "prod" ]]; then
         # Production mode - build and start
         print_info "Buduję frontend dla produkcji..."
@@ -206,7 +217,7 @@ start_frontend() {
         FRONTEND_PID=$!
         echo $FRONTEND_PID > ../../logs/frontend.pid
     else
-        # Development mode
+        # Development mode with environment variables
         nohup npm run dev > ../../logs/frontend.log 2>&1 &
         FRONTEND_PID=$!
         echo $FRONTEND_PID > ../../logs/frontend.pid
@@ -215,14 +226,35 @@ start_frontend() {
     cd ../..
     
     # Wait a bit for frontend to start
-    sleep 10
+    sleep 15
     
     # Check if frontend is running
     if kill -0 $FRONTEND_PID 2>/dev/null; then
         print_status "Frontend uruchomiony (PID: $FRONTEND_PID)"
+        
+        # Additional check - test if port 3000 is responding
+        local frontend_ready=false
+        for i in {1..30}; do
+            if curl -s http://localhost:3000 >/dev/null 2>&1; then
+                frontend_ready=true
+                break
+            fi
+            sleep 1
+        done
+        
+        if $frontend_ready; then
+            print_status "Frontend responds on port 3000"
+        else
+            print_warning "Frontend process running but port 3000 not responding yet"
+        fi
     else
         print_error "Frontend nie mógł zostać uruchomiony!"
         print_info "Sprawdź logi: tail -f logs/frontend.log"
+        print_info "Debug info:"
+        echo "  • Process exists: $(ps aux | grep -v grep | grep -c "next.*3000" || echo "0")"
+        echo "  • Port 3000 status: $(lsof -i :3000 2>/dev/null | wc -l || echo "0") connections"
+        echo "  • Last 10 lines of frontend log:"
+        tail -10 logs/frontend.log 2>/dev/null || echo "    No log file found"
         exit 1
     fi
 }

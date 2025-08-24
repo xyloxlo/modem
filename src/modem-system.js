@@ -511,8 +511,14 @@ class EC25ModemSystem {
         // Security middleware (Phase 7)
         this.api.use(helmet());
         this.api.use(cors({
-            origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-            credentials: true
+            origin: [
+                'http://localhost:3000',
+                'http://127.0.0.1:3000',
+                process.env.CORS_ORIGIN || 'http://localhost:3000'
+            ],
+            credentials: true,
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+            allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With']
         }));
         this.api.use(express.json());
         
@@ -523,9 +529,15 @@ class EC25ModemSystem {
         const server = this.api.listen(this.options.api.port, this.options.api.host);
         this.io = new Server(server, {
             cors: {
-                origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-                credentials: true
-            }
+                origin: [
+                    'http://localhost:3000',
+                    'http://127.0.0.1:3000',
+                    process.env.CORS_ORIGIN || 'http://localhost:3000'
+                ],
+                credentials: true,
+                methods: ['GET', 'POST']
+            },
+            transports: ['websocket', 'polling']
         });
         
         this.setupWebSocketHandlers();
