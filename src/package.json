@@ -11,7 +11,13 @@
     "test:detector": "node test-detector.js",
     "system": "node modem-system.js",
     "dev": "nodemon modem-system.js quick-start",
-    "help": "node modem-system.js help"
+    "help": "node modem-system.js help",
+    "frontend:install": "cd frontend && npm install",
+    "frontend:start": "cd frontend && npm start",
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "install:all": "npm install && npm run frontend:install",
+    "dev:all": "concurrently \"npm run dev\" \"npm run frontend:dev\""
   },
   "keywords": [
     "ec25-eux",
@@ -37,7 +43,8 @@
     "helmet": "^7.0.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "concurrently": "^8.2.0"
   },
   "engines": {
     "node": ">=18.0.0"
