@@ -136,6 +136,9 @@ class EC25ModemSystem {
             // Start background workers
             await this.startSystemWorkers();
             
+            // Start USB monitoring for real-time detection
+            this.startUSBMonitoring();
+            
             console.log('✅ EC25-EUX Multi-Modem System ready!');
             console.log(`🌐 API server: http://${this.options.api.host}:${this.options.api.port}`);
             console.log(`📡 Socket.IO: http://${this.options.api.host}:${this.options.api.port}`);
@@ -700,6 +703,47 @@ class EC25ModemSystem {
             }
         });
         
+        // POST /api/system/fix-mbim - Emergency fix for MBIM errors
+        this.api.post('/api/system/fix-mbim', async (req, res) => {
+            try {
+                console.log('🚨 Emergency MBIM fix initiated...');
+                
+                // Kill ModemManager to prevent interference
+                await execAsync('sudo pkill -f ModemManager || true').catch(() => {});
+                await execAsync('sudo systemctl stop ModemManager || true').catch(() => {});
+                
+                // Force remove cdc_mbim module
+                await execAsync('sudo modprobe -r cdc_mbim || true').catch(() => {});
+                await execAsync('sudo modprobe -r cdc_wdm || true').catch(() => {});
+                
+                // Reload QMI modules
+                await execAsync('sudo modprobe qmi_wwan').catch(() => {});
+                await execAsync('sudo modprobe option').catch(() => {});
+                
+                // Force re-scan USB devices
+                await execAsync('echo "2-1" | sudo tee /sys/bus/usb/drivers/usb/unbind || true').catch(() => {});
+                await execAsync('echo "2-1" | sudo tee /sys/bus/usb/drivers/usb/bind || true').catch(() => {});
+                
+                // Immediate detection scan
+                setTimeout(() => {
+                    this.performDetectionScan();
+                }, 2000);
+                
+                res.json({
+                    success: true,
+                    message: 'MBIM fix applied - system rescanning',
+                    timestamp: new Date().toISOString()
+                });
+                
+            } catch (error) {
+                res.status(500).json({ 
+                    success: false, 
+                    error: error.message,
+                    message: 'MBIM fix failed - manual intervention required'
+                });
+            }
+        });
+        
         console.log('📡 API endpoints configured');
     }
     
@@ -853,6 +897,82 @@ class EC25ModemSystem {
     }
     
     /**
+     * Start USB monitoring for real-time hot-plug detection
+     */
+    startUSBMonitoring() {
+        console.log('🔌 Starting USB hot-plug monitoring...');
+        
+        try {
+            // Monitor USB events using udev (Linux only)
+            const { spawn } = require('child_process');
+            
+            // Monitor USB add/remove events for EC25-EUX modems
+            this.udevMonitor = spawn('udevadm', ['monitor', '--subsystem-match=usb', '--property'], {
+                stdio: ['ignore', 'pipe', 'pipe']
+            });
+            
+            let eventBuffer = '';
+            
+            this.udevMonitor.stdout.on('data', (data) => {
+                eventBuffer += data.toString();
+                
+                // Process complete events (terminated by double newline)
+                const events = eventBuffer.split('\n\n');
+                eventBuffer = events.pop() || ''; // Keep incomplete event
+                
+                for (const event of events) {
+                    if (event.includes('2c7c') && event.includes('0125')) {
+                        this.handleUSBEvent(event);
+                    }
+                }
+            });
+            
+            this.udevMonitor.stderr.on('data', (data) => {
+                console.error('USB monitor error:', data.toString());
+            });
+            
+            this.udevMonitor.on('error', (error) => {
+                console.error('Failed to start USB monitoring:', error.message);
+                console.log('💡 Hot-plug detection will rely on periodic scanning only');
+            });
+            
+            console.log('✅ USB monitoring active - real-time hot-plug detection enabled');
+            
+        } catch (error) {
+            console.error('USB monitoring failed:', error.message);
+            console.log('💡 Continuing with periodic scanning only');
+        }
+    }
+    
+    /**
+     * Handle USB add/remove events for EC25-EUX modems
+     */
+    async handleUSBEvent(eventData) {
+        try {
+            const isAdd = eventData.includes('ACTION=add');
+            const isRemove = eventData.includes('ACTION=remove');
+            
+            if (isAdd) {
+                console.log('🔌 USB device added - triggering immediate scan');
+                // Wait a moment for device to settle
+                setTimeout(() => {
+                    this.performDetectionScan();
+                }, 1000);
+                
+            } else if (isRemove) {
+                console.log('🔌 USB device removed - triggering cleanup');
+                // Immediate cleanup scan
+                setTimeout(() => {
+                    this.performDetectionScan();
+                }, 500);
+            }
+            
+        } catch (error) {
+            console.error('Error handling USB event:', error.message);
+        }
+    }
+    
+    /**
      * Process newly detected modem (database insertion/update or in-memory storage)
      */
     async processDetectedModem(modem) {
@@ -991,6 +1111,38 @@ class EC25ModemSystem {
         } catch (error) {
             console.error('Proxy port allocation error (standalone):', error);
             throw error;
+        }
+    }
+    
+    /**
+     * Cleanup system resources
+     */
+    async cleanup() {
+        console.log('🧹 Cleaning up system resources...');
+        
+        try {
+            // Stop USB monitoring
+            if (this.udevMonitor) {
+                this.udevMonitor.kill();
+                console.log('🔌 USB monitoring stopped');
+            }
+            
+            // Stop detection worker
+            if (this.detectionWorker) {
+                clearInterval(this.detectionWorker);
+                console.log('🔍 Detection worker stopped');
+            }
+            
+            // Close database connections
+            if (this.db && !this.standaloneMode) {
+                await this.db.end();
+                console.log('🗄️ Database connections closed');
+            }
+            
+            console.log('✅ System cleanup completed');
+            
+        } catch (error) {
+            console.error('Error during cleanup:', error.message);
         }
     }
     

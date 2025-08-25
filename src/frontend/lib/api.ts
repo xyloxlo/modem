@@ -114,6 +114,18 @@ export const getLogs = async (): Promise<ApiResponse> => {
 }
 
 /**
+ * Emergency fix for MBIM errors
+ */
+export const fixMBIMErrors = async (): Promise<ApiResponse> => {
+  try {
+    const response = await apiClient.post('/system/fix-mbim')
+    return response.data
+  } catch (error) {
+    throw new Error(`Failed to fix MBIM errors: ${error}`)
+  }
+}
+
+/**
  * Execute command on specific modem
  */
 export const executeModemCommand = async (

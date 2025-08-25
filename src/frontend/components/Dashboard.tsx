@@ -13,7 +13,7 @@ import {
   TrendingUp
 } from 'lucide-react'
 import { useWebSocket } from '@/lib/websocket'
-import { getModems, getSystemStatus, triggerModemScan, forceCleanupModems } from '@/lib/api'
+import { getModems, getSystemStatus, triggerModemScan, forceCleanupModems, fixMBIMErrors } from '@/lib/api'
 import { Modem, SystemStatus } from '@/types'
 import { ModemCard } from '@/components/ModemCard'
 import { CommandPanel } from '@/components/CommandPanel'
@@ -144,6 +144,25 @@ export const Dashboard = () => {
     }
   }
 
+  const handleFixMBIM = async () => {
+    try {
+      setIsRefreshing(true)
+      const response = await fixMBIMErrors()
+      if (response.success) {
+        setError(null)
+        // Wait for system to apply fix, then refresh
+        setTimeout(async () => {
+          await refreshModems()
+        }, 3000)
+      }
+    } catch (error) {
+      console.error('Failed to fix MBIM errors:', error)
+      setError('Failed to fix MBIM errors - check console logs')
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -203,6 +222,15 @@ export const Dashboard = () => {
           >
             <AlertTriangle className="w-4 h-4 mr-2" />
             Cleanup
+          </button>
+          <button
+            onClick={handleFixMBIM}
+            disabled={isRefreshing}
+            className="btn btn-error"
+            title="Fix MBIM/QMI mode conflicts"
+          >
+            <Activity className="w-4 h-4 mr-2" />
+            Fix MBIM
           </button>
           <button
             onClick={handleRefresh}
