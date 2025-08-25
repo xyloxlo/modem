@@ -13,7 +13,7 @@ import {
   TrendingUp
 } from 'lucide-react'
 import { useWebSocket } from '@/lib/websocket'
-import { getModems, getSystemStatus, triggerModemScan } from '@/lib/api'
+import { getModems, getSystemStatus, triggerModemScan, forceCleanupModems } from '@/lib/api'
 import { Modem, SystemStatus } from '@/types'
 import { ModemCard } from '@/components/ModemCard'
 import { CommandPanel } from '@/components/CommandPanel'
@@ -127,6 +127,23 @@ export const Dashboard = () => {
     }
   }
 
+  const handleCleanupModems = async () => {
+    try {
+      setIsRefreshing(true)
+      const response = await forceCleanupModems()
+      if (response.success) {
+        // Immediately refresh after cleanup
+        await refreshModems()
+        setError(null)
+      }
+    } catch (error) {
+      console.error('Failed to cleanup modems:', error)
+      setError('Failed to cleanup disconnected modems')
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -178,6 +195,14 @@ export const Dashboard = () => {
           >
             <Radio className="w-4 h-4 mr-2" />
             Scan Modems
+          </button>
+          <button
+            onClick={handleCleanupModems}
+            disabled={isRefreshing}
+            className="btn btn-warning"
+          >
+            <AlertTriangle className="w-4 h-4 mr-2" />
+            Cleanup
           </button>
           <button
             onClick={handleRefresh}

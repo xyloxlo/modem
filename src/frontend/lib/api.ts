@@ -90,6 +90,18 @@ export const triggerModemScan = async (): Promise<ApiResponse> => {
 }
 
 /**
+ * Force cleanup of disconnected modems
+ */
+export const forceCleanupModems = async (): Promise<ApiResponse> => {
+  try {
+    const response = await apiClient.post('/modems/cleanup')
+    return response.data
+  } catch (error) {
+    throw new Error(`Failed to cleanup modems: ${error}`)
+  }
+}
+
+/**
  * Execute command on specific modem
  */
 export const executeModemCommand = async (

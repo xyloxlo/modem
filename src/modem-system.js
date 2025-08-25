@@ -71,9 +71,9 @@ class EC25ModemSystem {
             
             // Hot-plug detection settings
             detection: {
-                scanInterval: 5000,  // 5 seconds (per docs)
+                scanInterval: 2000,  // 2 seconds for faster detection
                 retryAttempts: 3,
-                timeout: 10000
+                timeout: 5000
             },
             
             // System limits and scaling
@@ -609,6 +609,31 @@ class EC25ModemSystem {
             }
         });
         
+        // POST /api/modems/cleanup - Force cleanup of disconnected modems
+        this.api.post('/api/modems/cleanup', async (req, res) => {
+            try {
+                if (this.standaloneMode) {
+                    // Force cleanup by comparing with empty detection result
+                    await this.cleanupDisconnectedModems([]);
+                    
+                    res.json({
+                        success: true,
+                        message: 'Forced cleanup completed',
+                        remainingModems: this.inMemoryModems.size,
+                        timestamp: new Date().toISOString()
+                    });
+                } else {
+                    res.json({
+                        success: true,
+                        message: 'Database mode - cleanup not needed',
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+        
         // POST /api/modems/:serial/command - Execute AT/QMI command
         this.api.post('/api/modems/:serial/command', async (req, res) => {
             try {
@@ -746,12 +771,17 @@ class EC25ModemSystem {
     async cleanupDisconnectedModems(currentlyDetectedModems) {
         if (!this.standaloneMode) return;
         
+        console.log(`🔍 Cleanup check: ${currentlyDetectedModems.length} currently detected, ${this.inMemoryModems.size} in memory`);
+        
         // Get serials of currently detected modems
         const currentSerials = new Set();
         for (const modem of currentlyDetectedModems) {
             const serial = `EC25_${modem.modemNumber}_${modem.usb.busNumber}_${modem.usb.deviceNumber}`;
             currentSerials.add(serial);
         }
+        
+        console.log(`🔍 Currently detected serials:`, Array.from(currentSerials));
+        console.log(`🔍 Stored in memory:`, Array.from(this.inMemoryModems.keys()));
         
         // Find modems to remove (not currently detected)
         const modemsToRemove = [];
@@ -769,24 +799,29 @@ class EC25ModemSystem {
                 const modemData = this.inMemoryModems.get(serial);
                 
                 // Release proxy port if allocated
-                if (modemData.proxy_port) {
+                if (modemData && modemData.proxy_port) {
                     this.allocatedPorts.delete(modemData.proxy_port);
+                    console.log(`🔌 Released proxy port ${modemData.proxy_port} for ${serial}`);
                 }
                 
                 // Remove from memory
                 this.inMemoryModems.delete(serial);
+                console.log(`🗑️  Removed ${serial} from memory`);
                 
                 // Trigger WebSocket event for removal
                 this.handleModemEvent({
                     operation: 'DELETE',
                     serial: serial,
                     status: 'offline',
-                    at_port: modemData.at_port
+                    at_port: modemData ? modemData.at_port : 'unknown'
                 });
             }
             
             // Update statistics after cleanup
             this.systemStats.activeModems = this.standaloneMode ? this.inMemoryModems.size : this.activeModems.size;
+            console.log(`📊 Updated activeModems count to: ${this.systemStats.activeModems}`);
+        } else {
+            console.log(`✅ No cleanup needed - all modems still detected`);
         }
     }
     
