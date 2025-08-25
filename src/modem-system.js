@@ -563,7 +563,7 @@ class EC25ModemSystem {
                 
                 res.json({
                     success: true,
-                    modems: modems,
+                    data: modems,
                     count: modems.length,
                     mode: this.standaloneMode ? 'standalone' : 'database',
                     timestamp: new Date().toISOString()
@@ -629,7 +629,7 @@ class EC25ModemSystem {
         
         // GET /api/system/status - System health and statistics
         this.api.get('/api/system/status', (req, res) => {
-            res.json({
+            const statusData = {
                 success: true,
                 status: 'operational',
                 statistics: {
@@ -637,6 +637,13 @@ class EC25ModemSystem {
                     uptime: Date.now() - this.systemStats.uptime,
                     lastScan: this.lastScan
                 },
+                mode: this.standaloneMode ? 'standalone' : 'database',
+                timestamp: new Date().toISOString()
+            };
+            
+            res.json({
+                success: true,
+                data: statusData,
                 timestamp: new Date().toISOString()
             });
         });
