@@ -1,25 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { WebSocketProvider } from '@/lib/websocket'
-import { Dashboard, Header, Sidebar, LoadingScreen } from '@/components'
+import { Dashboard, Header, Sidebar } from '@/components'
 
 export default function HomePage() {
-  const [isLoading, setIsLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  useEffect(() => {
-    // Simulate initial loading
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 1500)
-
-    return () => clearTimeout(timer)
-  }, [])
-
-  if (isLoading) {
-    return <LoadingScreen />
-  }
 
   return (
     <WebSocketProvider>

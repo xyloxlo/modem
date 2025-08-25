@@ -15,6 +15,7 @@ import {
   Activity
 } from 'lucide-react'
 import { useWebSocket } from '@/lib/websocket'
+import { getLogs } from '@/lib/api'
 
 interface LogEntry {
   id: string
@@ -40,58 +41,37 @@ export const LogsPanel = () => {
   })
   const [isAutoScroll, setIsAutoScroll] = useState(true)
 
-  // Generate sample logs for demonstration
+  // Load real logs from backend
   useEffect(() => {
-    const generateSampleLogs = () => {
-      const sampleLogs: LogEntry[] = [
-        {
-          id: '1',
-          timestamp: new Date(Date.now() - 60000).toISOString(),
-          level: 'info',
-          type: 'SYSTEM',
-          message: 'System initialization completed successfully',
-          details: { uptime: '1h 23m', modems: 3 }
-        },
-        {
-          id: '2',
-          timestamp: new Date(Date.now() - 120000).toISOString(),
-          level: 'info',
-          type: 'MODEM',
-          modem_serial: 'EC25_1_1_5',
-          message: 'Modem detection completed - status: ready',
-          details: { at_port: '/dev/ttyUSB2', qmi_device: '/dev/cdc-wdm0' }
-        },
-        {
-          id: '3',
-          timestamp: new Date(Date.now() - 180000).toISOString(),
-          level: 'info',
-          type: 'COMMAND',
-          modem_serial: 'EC25_2_1_6',
-          message: 'AT command executed successfully: AT+CSQ',
-          details: { response: '+CSQ: 18,99', execution_time: 234 }
-        },
-        {
-          id: '4',
-          timestamp: new Date(Date.now() - 240000).toISOString(),
-          level: 'warning',
-          type: 'MODEM',
-          modem_serial: 'EC25_3_1_7',
-          message: 'Modem signal strength low',
-          details: { rssi: 8, threshold: 15 }
-        },
-        {
-          id: '5',
-          timestamp: new Date(Date.now() - 300000).toISOString(),
-          level: 'error',
-          type: 'NETWORK',
-          message: 'QMI device access failed',
-          details: { device: '/dev/cdc-wdm2', error: 'Device is closed' }
+    const loadLogs = async () => {
+      setIsLoading(true)
+      try {
+        const response = await getLogs()
+        if (response.success) {
+          // Convert backend logs to frontend format
+          const backendLogs = response.data || []
+          const convertedLogs = backendLogs.map((log: any) => ({
+            id: log.id || Date.now().toString(),
+            timestamp: log.timestamp,
+            level: log.level || 'info',
+            type: log.type || 'SYSTEM',
+            modem_serial: log.modem_serial,
+            message: log.message,
+            details: log.details
+          }))
+          setLogs(convertedLogs)
+        } else {
+          setLogs([])
         }
-      ]
-      setLogs(sampleLogs)
+      } catch (error) {
+        console.error('Failed to load logs:', error)
+        setLogs([])
+      } finally {
+        setIsLoading(false)
+      }
     }
 
-    generateSampleLogs()
+    loadLogs()
   }, [])
 
   // Add new logs from WebSocket events

@@ -673,6 +673,33 @@ class EC25ModemSystem {
             });
         });
         
+        // GET /api/logs - Get system logs  
+        this.api.get('/api/logs', (req, res) => {
+            try {
+                if (this.standaloneMode) {
+                    // In standalone mode, return recent logs from memory
+                    const logs = this.inMemoryLogs || [];
+                    res.json({
+                        success: true,
+                        data: logs.slice(-100), // Last 100 logs
+                        count: logs.length,
+                        timestamp: new Date().toISOString()
+                    });
+                } else {
+                    // Database mode would query modem_logs table
+                    res.json({
+                        success: true,
+                        data: [],
+                        count: 0,
+                        message: 'Database logs not implemented yet',
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+        
         console.log('📡 API endpoints configured');
     }
     

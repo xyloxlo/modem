@@ -102,6 +102,18 @@ export const forceCleanupModems = async (): Promise<ApiResponse> => {
 }
 
 /**
+ * Get system logs
+ */
+export const getLogs = async (): Promise<ApiResponse> => {
+  try {
+    const response = await apiClient.get('/logs')
+    return response.data
+  } catch (error) {
+    throw new Error(`Failed to fetch logs: ${error}`)
+  }
+}
+
+/**
  * Execute command on specific modem
  */
 export const executeModemCommand = async (
