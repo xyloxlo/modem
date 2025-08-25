@@ -13,9 +13,9 @@
     "dev": "nodemon modem-system.js quick-start",
     "help": "node modem-system.js help",
     "frontend:install": "cd frontend && npm install",
-    "frontend:start": "cd frontend && NEXT_PUBLIC_WS_URL=http://localhost:3002 npm start",
-    "frontend:dev": "cd frontend && NEXT_PUBLIC_WS_URL=http://localhost:3002 npm run dev",
-    "frontend:build": "cd frontend && NEXT_PUBLIC_WS_URL=http://localhost:3002 npm run build",
+    "frontend:start": "cd frontend && npm start",
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
     "install:all": "npm install && npm run frontend:install",
     "dev:all": "concurrently \"npm run dev\" \"npm run frontend:dev\""
   },

@@ -205,7 +205,10 @@ start_frontend() {
     cd src/frontend/
     
     # Set environment variables for frontend
-    export NEXT_PUBLIC_WS_URL=http://localhost:3002
+    # Dynamically determine the backend host for WebSocket connection
+    # This assumes the backend is on the same host as the frontend is served from, but on port 3002
+    local BACKEND_IP=$(hostname -I | awk '{print $1}') # Get primary IP address
+    export NEXT_PUBLIC_WS_URL="http://${BACKEND_IP}:3002"
     export PORT=3000
     
     if [[ "$1" == "prod" ]]; then
