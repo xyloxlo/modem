@@ -525,11 +525,7 @@ class EC25ModemSystem {
         const server = this.api.listen(this.options.api.port, this.options.api.host);
         this.io = new Server(server, {
             cors: {
-                origin: [
-                    'http://localhost:3000',
-                    'http://127.0.0.1:3000',
-                    process.env.CORS_ORIGIN || 'http://localhost:3000'
-                ],
+                origin: true,
                 credentials: true,
                 methods: ['GET', 'POST']
             },
@@ -581,10 +577,30 @@ class EC25ModemSystem {
         // POST /api/modems/scan - Trigger manual detection scan
         this.api.post('/api/modems/scan', async (req, res) => {
             try {
+                const isAsync = (req.query.async === 'true') || (req.body && req.body.async === true);
+                
+                if (isAsync) {
+                    // Fire-and-forget scan to avoid client timeouts
+                    setImmediate(async () => {
+                        try {
+                            await this.performDetectionScan();
+                        } catch (e) {
+                            console.error('Background detection scan error:', e);
+                        }
+                    });
+                    return res.status(202).json({
+                        success: true,
+                        started: true,
+                        mode: 'async',
+                        timestamp: new Date().toISOString()
+                    });
+                }
+                
                 const result = await this.performDetectionScan();
                 res.json({
                     success: true,
                     result: result,
+                    mode: 'sync',
                     timestamp: new Date().toISOString()
                 });
                 

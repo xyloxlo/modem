@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+const BACKEND_HOST = process.env.BACKEND_HOST || 'localhost'
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
@@ -17,11 +18,11 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:3002/api/:path*', // Backend API
+        destination: `http://${BACKEND_HOST}:3002/api/:path*`,
       },
       {
         source: '/socket.io/:path*',
-        destination: 'http://localhost:3002/socket.io/:path*', // Socket.IO
+        destination: `http://${BACKEND_HOST}:3002/socket.io/:path*`,
       },
     ];
   },

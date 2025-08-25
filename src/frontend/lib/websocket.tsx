@@ -35,7 +35,9 @@ interface WebSocketProviderProps {
 
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ 
   children, 
-  url = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3002' 
+  url = (typeof window !== 'undefined'
+    ? `http://${window.location.hostname}:3002`
+    : 'http://localhost:3002')
 }) => {
   const [socket, setSocket] = useState<Socket | null>(null)
   const [isConnected, setIsConnected] = useState(false)

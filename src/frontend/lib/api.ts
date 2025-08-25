@@ -81,7 +81,8 @@ export const getSystemStatus = async (): Promise<ApiResponse<SystemStatus>> => {
  */
 export const triggerModemScan = async (): Promise<ApiResponse> => {
   try {
-    const response = await apiClient.post('/modems/scan')
+    // Use async scan to avoid client timeouts
+    const response = await apiClient.post('/modems/scan?async=true')
     return response.data
   } catch (error) {
     throw new Error(`Failed to trigger modem scan: ${error}`)
