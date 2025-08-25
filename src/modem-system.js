@@ -713,6 +713,11 @@ class EC25ModemSystem {
             const detectionResult = await this.detector.detectModems();
             
             if (detectionResult.success) {
+                // In standalone mode, cleanup disconnected modems first
+                if (this.standaloneMode) {
+                    await this.cleanupDisconnectedModems(detectionResult.modems);
+                }
+                
                 // Process each detected modem
                 for (const modem of detectionResult.modems) {
                     await this.processDetectedModem(modem);
@@ -732,6 +737,56 @@ class EC25ModemSystem {
         } catch (error) {
             console.error('Detection scan failed:', error);
             return { success: false, error: error.message };
+        }
+    }
+    
+    /**
+     * Cleanup disconnected modems in standalone mode
+     */
+    async cleanupDisconnectedModems(currentlyDetectedModems) {
+        if (!this.standaloneMode) return;
+        
+        // Get serials of currently detected modems
+        const currentSerials = new Set();
+        for (const modem of currentlyDetectedModems) {
+            const serial = `EC25_${modem.modemNumber}_${modem.usb.busNumber}_${modem.usb.deviceNumber}`;
+            currentSerials.add(serial);
+        }
+        
+        // Find modems to remove (not currently detected)
+        const modemsToRemove = [];
+        for (const [serial, modemData] of this.inMemoryModems.entries()) {
+            if (!currentSerials.has(serial)) {
+                modemsToRemove.push(serial);
+            }
+        }
+        
+        // Remove disconnected modems
+        if (modemsToRemove.length > 0) {
+            console.log(`🗑️  Removing ${modemsToRemove.length} disconnected modems:`, modemsToRemove);
+            
+            for (const serial of modemsToRemove) {
+                const modemData = this.inMemoryModems.get(serial);
+                
+                // Release proxy port if allocated
+                if (modemData.proxy_port) {
+                    this.allocatedPorts.delete(modemData.proxy_port);
+                }
+                
+                // Remove from memory
+                this.inMemoryModems.delete(serial);
+                
+                // Trigger WebSocket event for removal
+                this.handleModemEvent({
+                    operation: 'DELETE',
+                    serial: serial,
+                    status: 'offline',
+                    at_port: modemData.at_port
+                });
+            }
+            
+            // Update statistics after cleanup
+            this.systemStats.activeModems = this.standaloneMode ? this.inMemoryModems.size : this.activeModems.size;
         }
     }
     
